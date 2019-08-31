@@ -28,3 +28,14 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 	fmt.Println("Invoke()", fcn, params)
 	return shim.Success(nil)
 }
+
+type TicketsChaincode struct {
+}
+
+type ticket struct {
+	ObjectType string `json:"docType"`
+	EventName  string `json:"eventName"`
+	Location   string `json:"location"`
+	EventDate  string `json:"eventDate"`
+	Holder     string `json:"holder"`
+}
