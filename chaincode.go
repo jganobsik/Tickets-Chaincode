@@ -31,15 +31,15 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 	fcn, params := stub.GetFunctionAndParameters()
 	fmt.Println("Invoke()", fcn, params)
 
-	if function == "initTicket" { //create a new ticket
+	if fcn == "initTicket" { //create a new ticket
 		return cc.initTicket(stub, args)
-	} else if function == "transferTicket" { //change owner of a ticket
+	} else if fcn == "transferTicket" { //change owner of a ticket
 		return cc.transferTicket(stub, args)
-	} else if function == "readTicket" { //read ticket
+	} else if fcn == "readTicket" { //read ticket
 		return cc.readTicket(stub, args)
-	} else if function == "redeemTicket" { //redeem ticket
+	} else if fcn == "redeemTicket" { //redeem ticket
 		return cc.redeemTicket(stub, args)
-	} else if function == "deleteTicket" { //delete ticket
+	} else if fcn == "deleteTicket" { //delete ticket
 		return cc.deleteTicket(stub, args)
 	}
 
