@@ -26,7 +26,22 @@ func (cc *Chaincode) Init(stub shim.ChaincodeStubInterface) sc.Response {
 func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 	fcn, params := stub.GetFunctionAndParameters()
 	fmt.Println("Invoke()", fcn, params)
-	return shim.Success(nil)
+
+	if function == "initTicket" { //create a new ticket
+		return cc.initTicket(stub, args)
+	} else if function == "transferTicket" { //change owner of a ticket
+		return cc.transferTicket(stub, args)
+	} else if function == "readTicket" { //read ticket
+		return cc.readTicket(stub, args)
+	} else if function == "redeemTicket" { //redeem ticket
+		return cc.redeemTicket(stub, args)
+	} else if function == "deleteTicket" { //delete ticket
+		return cc.deleteTicket(stub, args)
+	}
+
+	fmt.Println("invoke did not find func: " + function) //error
+	return shim.Error("Received unknown function invocation")
+
 }
 
 type TicketsChaincode struct {
@@ -38,4 +53,5 @@ type ticket struct {
 	Location   string `json:"location"`
 	EventDate  string `json:"eventDate"`
 	Holder     string `json:"holder"`
+	Redeemed   bool   `json:"redeemed"`
 }
