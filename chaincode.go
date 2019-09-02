@@ -33,7 +33,7 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 
 	if fcn == "initTicket" { //create a new ticket
 		return cc.initTicket(stub, args)
-	} else if fcn == "transferTicket" { //change owner of a ticket
+	} else if fcn == "transferTicket" { //change holder of a ticket
 		return cc.transferTicket(stub, args)
 	} else if fcn == "readTicket" { //read ticket
 		return cc.readTicket(stub, args)
@@ -166,7 +166,7 @@ func (cc *TicketsChaincode) readTicket(stub shim.ChaincodeStubInterface, args []
 	}
 
 	ticketId = args[0]
-	valAsbytes, err := stub.GetState(ticketID) //get the pet from chaincode state
+	valAsbytes, err := stub.GetState(ticketID) //get the ticket from chaincode state
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to get state for " + ticketID + "\"}"
 		return shim.Error(jsonResp)
@@ -176,4 +176,89 @@ func (cc *TicketsChaincode) readTicket(stub shim.ChaincodeStubInterface, args []
 	}
 
 	return shim.Success(valAsbytes)
+}
+
+func (cc *TicketsChaincode) deleteTicket(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var jsonResp string
+	var ticketJSON ticket
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+	ticketID := args[0]
+
+	valAsbytes, err := stub.GetState(ticketID) //get the ticket from chaincode state
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + ticketID + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Ticket does not exist: " + ticketID + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = json.Unmarshal([]byte(valAsbytes), &ticketJSON)
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to decode JSON of: " + ticketID + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	err = stub.DelState(ticketID) //remove the ticket from chaincode state
+	if err != nil {
+		return shim.Error("Failed to delete state:" + err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+func (cc *TicketsChaincode) transferTicket(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	//   0       1       2
+	// "name", "from", "to"
+	if len(args) < 3 {
+		return shim.Error("Incorrect number of arguments. Expecting 3")
+	}
+
+	ticketID := args[0]
+	currentHolder := strings.ToLower(args[1])
+	newHolder := strings.ToLower(args[2])
+	fmt.Println("- start transferTicket ", ticketID, currentHolder, newHolder)
+
+	message, err := t.transferTicketHelper(stub, ticketID, currentHolder, newHolder)
+	if err != nil {
+		return shim.Error(message + err.Error())
+	} else if message != "" {
+		return shim.Error(message)
+	}
+
+	fmt.Println("- end transferTicket (success)")
+	return shim.Success(nil)
+}
+
+func (cc *TicketsChaincode) transferTicketHelper(stub shim.ChaincodeStubInterface, ticketID string, currentHolder string, newHolder string) (string, error) {
+
+	fmt.Println("Transfering ticket with ID: " + ticketID + " To: " + newHolder)
+	ticketAsBytes, err := stub.GetState(ticketID)
+	if err != nil {
+		return "Failed to get ticket:", err
+	} else if ticketAsBytes == nil {
+		return "Ticket does not exist", err
+	}
+
+	ticketToTransfer := ticket{}
+	err = json.Unmarshal(ticketAsBytes, &ticketToTransfer) //unmarshal it aka JSON.parse()
+	if err != nil {
+		return "", err
+	}
+
+	if currentHolder != ticketToTransfer.Holder {
+		return "This ticket is currently owned by another entity.", err
+	}
+
+	ticketToTransfer.Holder = newHolder //change the holder
+
+	ticketJSONBytes, _ := json.Marshal(ticketToTransfer)
+	err = stub.PutState(ticketID, ticketJSONBytes) //rewrite the ticket
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
 }
