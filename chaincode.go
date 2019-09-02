@@ -122,3 +122,21 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 	fmt.Println("- end init ticket")
 	return shim.Success(nil)
 }
+
+// create search index for ledger
+
+func (cc *TicketsChaincode) createIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+	fmt.Println("- start create index")
+	var err error
+
+	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+	if err != nil {
+		return err
+	}
+
+	value := []byte{0x00}
+	stub.PutState(indexKey, value)
+
+	fmt.Println("created index")
+	return nil
+}
