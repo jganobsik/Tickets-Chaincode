@@ -156,3 +156,24 @@ func (cc *TicketsChaincode) deleteIndex(stub shim.ChaincodeStubInterface, indexN
 	fmt.Println("deleted index")
 	return nil
 }
+
+func (cc *TicketsChaincode) readTicket(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var ticketID, jsonResp string
+	var err error
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting Ticket ID number")
+	}
+
+	ticketId = args[0]
+	valAsbytes, err := stub.GetState(ticketID) //get the pet from chaincode state
+	if err != nil {
+		jsonResp = "{\"Error\":\"Failed to get state for " + ticketID + "\"}"
+		return shim.Error(jsonResp)
+	} else if valAsbytes == nil {
+		jsonResp = "{\"Error\":\"Ticket does not exist: " + ticketID + "\"}"
+		return shim.Error(jsonResp)
+	}
+
+	return shim.Success(valAsbytes)
+}
