@@ -140,3 +140,19 @@ func (cc *TicketsChaincode) createIndex(stub shim.ChaincodeStubInterface, indexN
 	fmt.Println("created index")
 	return nil
 }
+
+// delete index
+func (cc *TicketsChaincode) deleteIndex(stub shim.ChaincodeStubInterface, indexName string, attributes []string) error {
+	fmt.Println("- start delete index")
+	var err error
+
+	indexKey, err := stub.CreateCompositeKey(indexName, attributes)
+	if err != nil {
+		return err
+	}
+	//  Delete index by key
+	stub.DelState(indexKey)
+
+	fmt.Println("deleted index")
+	return nil
+}
