@@ -20,16 +20,16 @@ type Chaincode struct {
 }
 
 // Init is called when the chaincode is instantiated by the blockchain network.
-func (cc *Chaincode) Init(stub shim.ChaincodeStubInterface) sc.Response {
+func (cc *TicketsChaincode) Init(stub shim.ChaincodeStubInterface) sc.Response {
 	fcn, params := stub.GetFunctionAndParameters()
 	fmt.Println("Init()", fcn, params)
 	return shim.Success(nil)
 }
 
 // Invoke is called as a result of an application request to run the chaincode.
-func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
-	fcn, params := stub.GetFunctionAndParameters()
-	fmt.Println("Invoke()", fcn, params)
+func (cc *TicketsChaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
+	fcn, args := stub.GetFunctionAndParameters()
+	fmt.Println("Invoke()", fcn, args)
 
 	if fcn == "initTicket" { //create a new ticket
 		return cc.initTicket(stub, args)
@@ -43,7 +43,7 @@ func (cc *Chaincode) Invoke(stub shim.ChaincodeStubInterface) sc.Response {
 		return cc.deleteTicket(stub, args)
 	}
 
-	fmt.Println("invoke did not find func: " + function) //error
+	fmt.Println("invoke did not find func: " + fcn) //error
 	return shim.Error("Received unknown function invocation")
 
 }
@@ -56,7 +56,7 @@ type ticket struct {
 	TicketID   string `json:"ticketId"`
 	EventName  string `json:"eventName"`
 	Location   string `json:"location"`
-	EventDate  string `json:"eventDate"`
+	EventDate  int    `json:"eventDate"`
 	Holder     string `json:"holder"`
 	Redeemed   bool   `json:"redeemed"`
 }
@@ -92,9 +92,10 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 	location := strings.ToLower(args[2])
 	eventDate, err := strconv.Atoi(args[3])
 	if err != nil {
-		return shim.Error("2nd argument must be a numeric string")
+		return shim.Error("argument must be a numeric string")
 	}
 	holder := strings.ToLower(args[4])
+	redeemed := false
 
 	//Check if ticket already exists
 	ticketAsBytes, err := stub.GetState(ticketID)
@@ -106,7 +107,7 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 
 	// Create ticket object and marshal to JSON
 	objectType := "ticket"
-	ticket := &ticket{objectType, ticketID, eventName, location, eventDate, holder}
+	ticket := &ticket{objectType, ticketID, eventName, location, eventDate, holder, redeemed}
 	ticketJSONasBytes, err := json.Marshal(ticket)
 	if err != nil {
 		return shim.Error(err.Error())
@@ -165,7 +166,7 @@ func (cc *TicketsChaincode) readTicket(stub shim.ChaincodeStubInterface, args []
 		return shim.Error("Incorrect number of arguments. Expecting Ticket ID number")
 	}
 
-	ticketId = args[0]
+	ticketID = args[0]
 	valAsbytes, err := stub.GetState(ticketID) //get the ticket from chaincode state
 	if err != nil {
 		jsonResp = "{\"Error\":\"Failed to get state for " + ticketID + "\"}"
@@ -221,7 +222,7 @@ func (cc *TicketsChaincode) transferTicket(stub shim.ChaincodeStubInterface, arg
 	newHolder := strings.ToLower(args[2])
 	fmt.Println("- start transferTicket ", ticketID, currentHolder, newHolder)
 
-	message, err := t.transferTicketHelper(stub, ticketID, currentHolder, newHolder)
+	message, err := cc.transferTicketHelper(stub, ticketID, currentHolder, newHolder)
 	if err != nil {
 		return shim.Error(message + err.Error())
 	} else if message != "" {
@@ -271,7 +272,7 @@ func (cc *TicketsChaincode) redeemTicket(stub shim.ChaincodeStubInterface, args 
 		return shim.Error("Incorrect number of arguments. Expecting Ticket ID number")
 	}
 
-	ticketId = args[0]
+	ticketID = args[0]
 	ticketAsBytes, err := stub.GetState(ticketID)
 	if err != nil {
 		return "Failed to get ticket:", err
