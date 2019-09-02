@@ -69,7 +69,7 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 		return shim.Error("Incorrect number of arguments. Expecting 5")
 	}
 
-	// ==== Input sanitation ====
+	//Input sanitation
 	fmt.Println("- start init ticket")
 	if len(args[0]) <= 0 {
 		return shim.Error("1st argument must be a non-empty string")
@@ -96,7 +96,7 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 	}
 	holder := strings.ToLower(args[4])
 
-	// ==== Check if ticket already exists ====
+	//Check if ticket already exists
 	ticketAsBytes, err := stub.GetState(ticketID)
 	if err != nil {
 		return shim.Error("Failed to get ticket: " + err.Error())
@@ -104,7 +104,7 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 		return shim.Error("This ticket already exists: " + ticketID)
 	}
 
-	// ==== Create ticket object and marshal to JSON ====
+	// Create ticket object and marshal to JSON
 	objectType := "ticket"
 	ticket := &ticket{objectType, ticketID, eventName, location, eventDate, holder}
 	ticketJSONasBytes, err := json.Marshal(ticket)
@@ -112,13 +112,13 @@ func (cc *TicketsChaincode) initTicket(stub shim.ChaincodeStubInterface, args []
 		return shim.Error(err.Error())
 	}
 
-	// === Save ticket to state ===
+	// Save ticket to state
 	err = stub.PutState(ticketID, ticketJSONasBytes)
 	if err != nil {
 		return shim.Error(err.Error())
 	}
 
-	// ==== Ticket saved and indexed. Return success ====
+	//Ticket saved and indexed. Return success
 	fmt.Println("- end init ticket")
 	return shim.Success(nil)
 }
@@ -243,7 +243,7 @@ func (cc *TicketsChaincode) transferTicketHelper(stub shim.ChaincodeStubInterfac
 	}
 
 	ticketToTransfer := ticket{}
-	err = json.Unmarshal(ticketAsBytes, &ticketToTransfer) //unmarshal it aka JSON.parse()
+	err = json.Unmarshal(ticketAsBytes, &ticketToTransfer) //unmarshal ticket
 	if err != nil {
 		return "", err
 	}
@@ -255,6 +255,43 @@ func (cc *TicketsChaincode) transferTicketHelper(stub shim.ChaincodeStubInterfac
 	ticketToTransfer.Holder = newHolder //change the holder
 
 	ticketJSONBytes, _ := json.Marshal(ticketToTransfer)
+	err = stub.PutState(ticketID, ticketJSONBytes) //rewrite the ticket
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
+}
+
+func (cc *TicketsChaincode) redeemTicket(stub shim.ChaincodeStubInterface, args []string) peer.Response {
+	var ticketID, jsonResp string
+	var err error
+
+	if len(args) != 1 {
+		return shim.Error("Incorrect number of arguments. Expecting Ticket ID number")
+	}
+
+	ticketId = args[0]
+	ticketAsBytes, err := stub.GetState(ticketID)
+	if err != nil {
+		return "Failed to get ticket:", err
+	} else if ticketAsBytes == nil {
+		return "Ticket does not exist", err
+	}
+
+	ticketToRedeem := ticket{}
+	err = json.Unmarshal(ticketAsBytes, &ticketToRedeem) //unmarshal ticket
+	if err != nil {
+		return "", err
+	}
+
+	if ticketToRedeem.Redeemed == true {
+		return "This ticket has already been redeemed.", err
+	}
+
+	ticketToRedeem.Redeemed = true //set ticket to redeemed
+
+	ticketJSONBytes, _ := json.Marshal(ticketToRedeem)
 	err = stub.PutState(ticketID, ticketJSONBytes) //rewrite the ticket
 	if err != nil {
 		return "", err
